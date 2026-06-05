@@ -30,10 +30,10 @@ python train.py \
 |----------|---------|-------------|
 | `--data_path` | Required | Path(s) to CSV file(s) |
 | `--output_dir` | `./output` | Output directory |
-| `--epochs` | `100` | Number of epochs |
+| `--epochs` | `70` | Number of epochs |
 | `--batch_size` | `16` | Batch size |
-| `--lr` | `0.0001` | Learning rate |
-| `--dropout` | `0.3` | Dropout rate |
+| `--lr` | `0.00001` | Learning rate |
+| `--dropout` | `0.5` | Dropout rate |
 | `--hidden_dim` | `128` | Hidden dimension |
 | `--num_heads` | `4` | Attention heads |
 | `--test_size` | `0.2` | Test split ratio |
