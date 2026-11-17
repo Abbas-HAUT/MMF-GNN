@@ -1,0 +1,467 @@
+MMF-GNN ENVIRONMENT, INSTALLATION, AND EXECUTION GUIDE
+======================================================
+
+1. PURPOSE
+----------
+This document describes the software environment, required Python packages,
+input-data format, installation procedure, execution commands, and expected
+outputs for the MMF-GNN implementation supplied with the project.
+
+The guide is based on the imports, data-loading functions, command-line
+arguments, and output-saving operations present in the supplied MMF-GNN
+Python script. Package versions below are proposed reproducible pins. They
+must be checked against the original training environment before being
+reported as the exact versions used to generate manuscript results.
+
+
+2. RECOMMENDED SOFTWARE ENVIRONMENT
+------------------------------------
+Recommended Python version:
+    Python 3.10
+
+Recommended environment manager:
+    Conda (Miniconda or Anaconda)
+
+Core framework:
+    PyTorch
+    PyTorch Geometric
+    RDKit
+
+Scientific and data-processing packages:
+    NumPy
+    pandas
+    scikit-learn
+    SciPy
+
+Plotting packages:
+    Matplotlib
+    seaborn
+
+Hardware:
+    CPU execution is supported by the script.
+    A CUDA-capable NVIDIA GPU can be used when a compatible CUDA-enabled
+    PyTorch installation is available.
+
+Important:
+    The exact CUDA runtime and PyTorch wheel depend on the operating system,
+    NVIDIA driver, and GPU. Install the PyTorch build appropriate for the
+    target machine rather than assuming that one CUDA build works everywhere.
+
+
+3. PYTHON PACKAGE REQUIREMENTS
+------------------------------
+The following package versions are proposed pins for a Python 3.10
+environment. They are intended as a reproducible starting point, not as
+verified records of the original experimental environment.
+
+    numpy==1.26.4
+    pandas==2.2.2
+    scikit-learn==1.4.2
+    scipy==1.13.1
+    matplotlib==3.8.4
+    seaborn==0.13.2
+    rdkit==2023.9.6
+    torch==2.2.2
+    torch-geometric==2.5.3
+
+Python standard-library modules used by the script do not need to be
+installed separately. These include os, sys, argparse, math, warnings,
+datetime, typing, and json.
+
+The main third-party imports in the supplied script are:
+    rdkit
+    torch
+    torch_geometric
+    numpy
+    pandas
+    scikit-learn
+    scipy
+    matplotlib
+    seaborn
+
+
+4. CREATE THE CONDA ENVIRONMENT
+-------------------------------
+Create a new environment:
+
+    conda create -n mmf_gnn python=3.10 -y
+
+Activate it:
+
+    conda activate mmf_gnn
+
+Update pip:
+
+    python -m pip install --upgrade pip setuptools wheel
+
+It is recommended to install PyTorch before PyTorch Geometric. Select the
+PyTorch installation command that matches the machine.
+
+For a CPU-only environment, a starting command is:
+
+    pip install torch==2.2.2
+
+For a CUDA environment, consult the official PyTorch installation selector
+and install the compatible CUDA-enabled build of PyTorch 2.2.2. Do not use
+the CPU-only command if GPU acceleration is required.
+
+
+5. INSTALL THE REMAINING DEPENDENCIES
+-------------------------------------
+After installing the appropriate PyTorch build, install the other packages:
+
+    pip install numpy==1.26.4
+    pip install pandas==2.2.2
+    pip install scikit-learn==1.4.2
+    pip install scipy==1.13.1
+    pip install matplotlib==3.8.4
+    pip install seaborn==0.13.2
+    pip install rdkit==2023.9.6
+    pip install torch-geometric==2.5.3
+
+Depending on the PyTorch and platform combination, PyTorch Geometric may
+require additional compiled extension wheels for optional operations.
+Follow the official PyTorch Geometric installation instructions if pip
+reports missing or incompatible extension packages.
+
+Alternatively, install the packages listed in the accompanying
+requirements.txt file after installing the appropriate PyTorch build:
+
+    pip install -r requirements.txt
+
+If the requirements file attempts to replace a CUDA-enabled PyTorch build
+with a different wheel, reinstall the correct PyTorch build for the machine.
+
+
+6. VERIFY THE INSTALLATION
+---------------------------
+Run the following command:
+
+    python -c "import torch, torch_geometric, rdkit, numpy, pandas, sklearn, scipy, matplotlib, seaborn; print('All imports successful'); print('PyTorch:', torch.__version__); print('PyG:', torch_geometric.__version__); print('CUDA available:', torch.cuda.is_available()); print('RDKit:', rdkit.__version__)"
+
+A successful import test indicates that the principal dependencies can be
+loaded. If CUDA is available, check the GPU name with:
+
+    python -c "import torch; print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CUDA not available; using CPU')"
+
+The script automatically selects CUDA when torch.cuda.is_available() is
+true; otherwise, it uses the CPU.
+
+
+7. INPUT DATA FORMAT
+--------------------
+The script accepts one or more CSV files. Each input file must contain a
+molecular SMILES column and a binary activity-label column.
+
+Required logical fields:
+    SMILES       Molecular SMILES string
+    Activity     Binary activity label
+
+The loader also recognizes these alternative column names:
+    canonical_smiles  -> renamed to SMILES
+    Activity Class    -> renamed to Activity
+    label             -> renamed to Activity, if Activity is absent
+
+Example:
+
+    SMILES,Activity
+    CC(=O)O,1
+    CCO,0
+
+Label convention used by the supplied code:
+    1 = Active
+    0 = Inactive
+
+The script converts Activity values to integers. Ensure that the labels are
+already correctly assigned before running the model. The supplied script
+reads these labels; it does not establish the scientific validity of the
+upstream activity-labeling procedure.
+
+Data preparation performed by the script:
+    - Reads each supplied CSV file.
+    - Retains the SMILES and Activity columns.
+    - Removes rows with missing values in these fields.
+    - Merges the supplied datasets.
+    - Removes duplicate molecules based on the SMILES string.
+    - Uses RDKit to remove SMILES strings that cannot be parsed.
+    - Reports the final number of compounds and active/inactive counts.
+
+Important data checks before training:
+    - Confirm that every Activity value is either 0 or 1.
+    - Confirm that SMILES strings correspond to the intended compounds.
+    - Confirm that active/inactive labels were generated using the
+      documented study-specific criteria.
+    - Check for duplicate compounds represented by different, non-canonical
+      SMILES strings. The supplied code removes exact duplicate SMILES
+      strings, not necessarily all chemically equivalent structures.
+    - Keep external validation compounds separate from model-development
+      data to avoid information leakage.
+
+
+8. RUNNING THE MMF-GNN SCRIPT
+-----------------------------
+Assume the main script is named:
+
+    mmf_gnn.py
+
+Basic run with one dataset:
+
+    python mmf_gnn.py --data_path dataset.csv
+
+Run with multiple datasets:
+
+    python mmf_gnn.py --data_path dataset_1.csv dataset_2.csv
+
+Specify an output directory:
+
+    python mmf_gnn.py --data_path dataset.csv --output_dir ./mmf_gnn_results
+
+Example with explicit training settings:
+
+    python mmf_gnn.py --data_path dataset.csv --output_dir ./results --epochs 100 --batch_size 16 --lr 0.0001 --dropout 0.3 --hidden_dim 128 --num_heads 4 --seed 42 --n_folds 5 --patience 10
+
+Run the ablation study:
+
+    python mmf_gnn.py --data_path dataset.csv --output_dir ./results --run_ablation
+
+Run with an external validation dataset:
+
+    python mmf_gnn.py --data_path training_dataset.csv --external_data external_dataset.csv --output_dir ./external_results
+
+Run the ablation study and external validation together:
+
+    python mmf_gnn.py --data_path training_dataset.csv --external_data external_dataset.csv --output_dir ./complete_results --run_ablation
+
+
+9. COMMAND-LINE ARGUMENTS
+-------------------------
+--data_path
+    Required. One or more CSV input files.
+
+--output_dir
+    Directory in which results and figures are saved.
+    Default: ./output
+
+--epochs
+    Maximum number of training epochs.
+    Default: 100
+
+--batch_size
+    Number of samples per batch.
+    Default: 16
+
+--lr
+    Learning rate.
+    Default: 0.0001
+
+--dropout
+    Dropout rate.
+    Default: 0.3
+
+--hidden_dim
+    Hidden representation dimension.
+    Default: 128
+
+--num_heads
+    Number of graph-attention heads.
+    Default: 4
+
+--seed
+    Random seed used for PyTorch and NumPy.
+    Default: 42
+
+--gpu
+    GPU index selected when CUDA is available.
+    Default: 0
+
+--n_folds
+    Number of cross-validation folds.
+    Default: 5
+
+--patience
+    Early-stopping patience.
+    Default: 10
+
+--run_ablation
+    Optional flag that enables the ablation study.
+
+--external_data
+    Optional path to a separate CSV file for external validation.
+
+
+10. OUTPUT FILES
+----------------
+The script creates the output directory if it does not already exist.
+Depending on the selected options and successful execution, it can save:
+
+    cv_results.csv
+        Mean and standard deviation of the cross-validation metrics.
+
+    roc_curves.png and roc_curves.pdf
+        Receiver operating characteristic curves.
+
+    pr_curves.png and pr_curves.pdf
+        Precision-recall curves.
+
+    confusion_matrix.png and confusion_matrix.pdf
+        Confusion-matrix visualization.
+
+    classification_report.csv
+        Classification metrics derived from the fold predictions.
+
+    cv_boxplot.png
+        Cross-validation metric distribution plot.
+
+    learning_curves.png
+        Training/learning-curve visualization, where generated by the code.
+
+When --run_ablation is supplied:
+
+    ablation_results.csv
+        Summary of ablation-model metrics.
+
+    ablation_details.json
+        Detailed ablation results in JSON format.
+
+    ablation_comparison.png
+        Ablation comparison figure.
+
+    ablation_heatmap.png and ablation_heatmap.pdf
+        Ablation heatmap figures.
+
+When --external_data is supplied and the external file is accepted:
+
+    external_validation.csv
+        External-validation metric values.
+
+The exact files produced depend on the execution path and whether optional
+analyses are enabled.
+
+
+11. MODEL AND FEATURE REPRESENTATIONS
+-------------------------------------
+The supplied implementation uses two complementary molecular input
+representations:
+
+A. SMILES-based representation
+    - SMILES strings are converted into character-based encodings.
+    - The maximum SMILES sequence length is set to 200 characters.
+    - The code includes integer-label and one-hot encoding functions.
+
+B. Molecular-graph representation
+    - RDKit parses each SMILES string into a molecular structure.
+    - Atoms are represented by atom-level features.
+    - Bonds are represented by bond/edge features.
+    - The configured node-feature dimension is 42.
+    - The configured edge-feature dimension is 10.
+    - Graph-attention layers are implemented using PyTorch Geometric.
+
+The architecture combines information from the sequence and graph
+representations. The exact model configuration is defined in the Python
+script and should be kept consistent with the version used to produce the
+reported manuscript results.
+
+
+12. REPRODUCIBILITY AND REPORTING
+---------------------------------
+For reproducible experiments, record the following information:
+
+    - Python version
+    - Operating system
+    - PyTorch version
+    - PyTorch Geometric version
+    - RDKit version
+    - NumPy and pandas versions
+    - scikit-learn and SciPy versions
+    - Matplotlib and seaborn versions
+    - CUDA version, if applicable
+    - GPU model, if applicable
+    - Input dataset filenames and dataset version/date
+    - Number of compounds before and after preprocessing
+    - Number of active and inactive compounds
+    - Random seed
+    - Number of folds
+    - Training epochs and early-stopping patience
+    - Batch size, learning rate, hidden dimension, attention heads,
+      and dropout rate
+
+To record the installed package versions, run:
+
+    python --version
+    pip freeze > installed_environment.txt
+
+The generated installed_environment.txt file records the packages actually
+installed in the active environment. It is preferable to use this record
+when documenting the environment used for final manuscript experiments.
+
+The random seed in the supplied script is applied to PyTorch and NumPy.
+For strict reproducibility across different hardware and software builds,
+additional deterministic settings may be required. Results can vary across
+CPU/GPU hardware, CUDA versions, and library builds.
+
+
+13. IMPORTANT IMPLEMENTATION NOTES
+-----------------------------------
+1. The package versions listed in this guide are proposed pins. They should
+   not be described as the exact original experimental versions unless
+   verified from the environment in which the manuscript experiments ran.
+
+2. PyTorch installation is platform-specific. A CUDA-enabled installation
+   must match the machine's driver and supported CUDA runtime.
+
+3. The supplied data loader expects binary activity labels. It does not
+   independently validate how those labels were scientifically assigned.
+
+4. The supplied code removes exact duplicate SMILES strings. It does not
+   guarantee that all chemically equivalent structures have been
+   standardized to a single representation.
+
+5. External validation should use genuinely independent compounds and
+   labels. Avoid using external validation data to tune model parameters
+   or select the final model.
+
+6. The code's external-validation pathway should be reviewed carefully
+   before making claims of fully independent validation. In the supplied
+   implementation, the external dataset is evaluated during training for
+   early-stopping decisions. If strict external validation is intended,
+   model selection should be completed using training/validation data only,
+   and the external test set should be evaluated once after model selection.
+
+7. Preserve the exact script, data files, environment record, command-line
+   arguments, and output files associated with each final experiment.
+
+
+14. SUGGESTED REPOSITORY STRUCTURE
+----------------------------------
+A clear project layout could be:
+
+    MMF-GNN/
+    |
+    |-- mmf_gnn.py
+    |-- requirements.txt
+    |-- ENVIRONMENT_AND_EXECUTION_GUIDE.txt
+    |
+    |-- data/
+    |   |-- training_dataset.csv
+    |   |-- external_dataset.csv
+    |
+    |-- results/
+    |
+    |-- README.md
+
+Do not upload confidential, restricted, or otherwise non-shareable datasets
+to a public repository. Provide access instructions or representative
+example data where appropriate.
+
+
+15. CITATION AND USE
+--------------------
+If this implementation is used in a manuscript, thesis, or other research
+output, cite the corresponding MMF-GNN study and describe the software
+environment and dataset-preparation procedure accurately.
+
+This guide documents how to prepare and run the supplied implementation.
+It does not independently verify model performance, dataset provenance,
+activity labels, or the scientific validity of the experimental design.
+Those details must be supported by the study's methods, data records, and
+reported analyses.
