@@ -1,0 +1,1 @@
+python quickstart/quick_start.py --sample_data quickstart/sample_dataset.csv --dropout --epochs  --lr  --batch_size 
